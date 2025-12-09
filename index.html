@@ -7,51 +7,117 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h2>Stopwatch</h2>
+    <h2>Activity Tracker</h2>
+        <input id="activityInput" type="text" placeholder="ENTER ACTIVITY">
+        <p id="activityList"></p>
          <div id="stopwatch" >00:00:00</div>
          <!--calls a function when the button is clicked-->
          <button onclick="startStopwatch()">Start</button>
          <button onclick="stopStopwatch()">Stop</button>
          <button onclick="resetStopwatch()">Reset</button>
     <script>
-        /*keep track of start time*/
-        let startTime;
-        /*keep track of the interval*/
-        let stopwatchInterval;
-        /*keep track of elapsed pause time*/
-        let elapsedPausedTime = 0;
-        function startStopwatch() {
-            /* if stopwatchInterval is empty(stopwatch isn't running) the the statement runs */
-            if (!stopwatchInterval) {
-                startTime = new Date().getTime()-elapsedPausedTime;
-                /* updates every 1s */
-                stopwatchInterval = setInterval(updateStopwatch, 1000)
+    let activityInput = document.querySelector("#activityInput");
+    let activityList = document.querySelector("#activityList");
+    // this object will store the times for our activities
+    let activityTimes = {};
+
+    // keep track of start time
+    let startTime;
+    // keep track of the interval
+    let stopwatchInterval;
+    // keep track of total elapsed time (for resuming)
+    let elapsedPausedTime = 0;
+
+    function startStopwatch() {
+        // only start if not already running
+        if (!stopwatchInterval) {
+            startTime = new Date().getTime();
+            // updates every 1s
+            stopwatchInterval = setInterval(updateStopwatch, 1000);
+        }
+    }
+
+    function stopStopwatch() {
+        // stop ticking
+        clearInterval(stopwatchInterval);
+
+        // time for this segment only (since last start)
+        let newSegment = new Date().getTime() - startTime;
+
+        elapsedPausedTime = 0;
+
+        // mark stopwatch as not running
+        stopwatchInterval = null;
+
+        // get activity name
+        let activityName = activityInput.value.trim().toLowerCase();
+
+        // ignore if empty
+        if (activityName !== "") {
+            // convert this segment to seconds
+            let elapsedSeconds = Math.floor(newSegment / 1000);
+
+            // if this activity doesn't exist yet, init at 0
+            if (!activityTimes[activityName]) {
+                activityTimes[activityName] = 0;
             }
+
+            // add this segment to that activity's total
+            activityTimes[activityName] += elapsedSeconds;
+
+            // refresh display
+            updateActivityList();
         }
-        function stopStopwatch() {
-            /*stops interval*/
-            clearInterval(stopwatchInterval);
-            elapsedPausedTime = new Date().getTime() - startTime; // calculate elapsed paused time and saves it
-            stopwatchInterval = null; // reset the interval variable
-        }
-        function resetStopwatch(){
-            stopStopwatch(); // stop the interval
-            elapsedPausedTime = 0; // reset the elapsed paused time variable
-            document.getElementById("stopwatch").innerHTML = "00:00:00"; // reset the display
-        }
-        function updateStopwatch() {
-            var currentTime = new Date().getTime(); // get current time in milliseconds
-            var elapsedTime = currentTime - startTime; // calculate elapsed time in milliseconds
-            var seconds = Math.floor(elapsedTime / 1000) % 60; // calculate seconds
-            var minutes = Math.floor(elapsedTime / 1000 / 60) % 60; // calculate minutes
-            var hours = Math.floor(elapsedTime / 1000 / 60 / 60); // calculate hours
-            var displayTime = pad(hours) + ":" + pad(minutes) + ":" + pad(seconds); // format display time
-            document.getElementById("stopwatch").innerHTML = displayTime; // update the display
-        }
-        function pad(number) {
-        // add a leading zero if the number is less than 10
+    }
+
+    function resetStopwatch() {
+        // stop but don't log new time (optional: you could tweak this)
+        clearInterval(stopwatchInterval);
+        stopwatchInterval = null;
+        elapsedPausedTime = 0;
+        document.getElementById("stopwatch").innerHTML = "00:00:00";
+    }
+
+    function updateStopwatch() {
+        let currentTime = new Date().getTime();
+        let elapsedTime = currentTime - startTime;
+
+        let seconds = Math.floor(elapsedTime / 1000) % 60;
+        let minutes = Math.floor(elapsedTime / 1000 / 60) % 60;
+        let hours   = Math.floor(elapsedTime / 1000 / 60 / 60);
+
+        let displayTime = pad(hours) + ":" + pad(minutes) + ":" + pad(seconds);
+        document.getElementById("stopwatch").innerHTML = displayTime;
+    }
+
+    function pad(number) {
         return (number < 10 ? "0" : "") + number;
-      }
-    </script>
+    }
+
+    // format seconds like "1h 5m 3s"
+    function formatSeconds(totalSeconds) {
+        let hours = Math.floor(totalSeconds / 3600);
+        let minutes = Math.floor((totalSeconds % 3600) / 60);
+        let seconds = totalSeconds % 60;
+
+        let result = "";
+        if (hours > 0)   result += hours + "h ";
+        if (minutes > 0) result += minutes + "m ";
+        result += seconds + "s";
+
+        return result.trim();
+    }
+
+    function updateActivityList() {
+        activityList.innerHTML = ""; // clear the display
+
+        for (let activity in activityTimes) {
+            let totalTime = activityTimes[activity];
+            let formatted = formatSeconds(totalTime);
+            activityList.innerHTML += `${activity} — ${formatted}<br>`;
+        }
+    }
+</script>
+
 </body>
 </html>
