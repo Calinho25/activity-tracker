@@ -16,17 +16,21 @@
          <button onclick="stopStopwatch()">Stop</button>
          <button onclick="resetStopwatch()">Reset</button>
     <script>
-    let activityInput = document.querySelector("#activityInput");
-    let activityList = document.querySelector("#activityList");
-    // this object will store the times for our activities
-    let activityTimes = {};
-
-    // keep track of start time
-    let startTime;
-    // keep track of the interval
-    let stopwatchInterval;
-    // keep track of total elapsed time (for resuming)
-    let elapsedPausedTime = 0;
+        let activityTimes = {};
+         let activityInput = document.querySelector("#activityInput");
+         let activityList = document.querySelector("#activityList");
+         // keep track of start time
+         let startTime;
+         // keep track of the interval
+         let stopwatchInterval;
+         // keep track of total elapsed time (for resuming)
+         let elapsedPausedTime = 0;
+        // Load saved activities on page load
+        if (localStorage.getItem("activityTimes")) {
+        activityTimes = JSON.parse(localStorage.getItem("activityTimes"));
+        updateActivityList();
+        }
+   
 
     function startStopwatch() {
         // only start if not already running
@@ -67,6 +71,7 @@
 
             // refresh display
             updateActivityList();
+            localStorage.setItem("activityTimes", JSON.stringify(activityTimes));
         }
     }
 
