@@ -44,6 +44,9 @@
                 <button onclick="resetPomodoro()">Reset</button>
             </div>
         </div>
+        <button id="installButton" style="display:none;">Install App</button>
+        
+
     </div>
 
     <script>
@@ -332,6 +335,34 @@
         if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("service-worker.js");
 }
+let deferredPrompt;
+const installButton = document.getElementById("installButton");
+
+// Listen for the PWA install availability event
+window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();            // Stop automatic browser prompt
+    deferredPrompt = e;            // Save the event for later use
+    installButton.style.display = "block";  // Show your custom button
+});
+
+// When user clicks your install button
+installButton.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();       // Show the install popup
+
+    const result = await deferredPrompt.userChoice;
+    
+    // Hide the button once the user responds
+    installButton.style.display = "none";
+    
+    deferredPrompt = null;         // Reset for safety
+});
+
+// Hide button after install
+window.addEventListener("appinstalled", () => {
+    installButton.style.display = "none";
+});
 
     </script>
 </body>
