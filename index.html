@@ -6,10 +6,20 @@
     <title>Activity Tracker</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" href="favicon.ico">
+
 
 </head>
 <body>
+    <div id="iosInstallBanner" class="ios-banner" style="display:none;">
+    📱 <strong>Install App</strong><br>
+    Tap <span class="share-icon">↑</span> then “Add to Home Screen”
+    <button id="dismissBanner">Got it</button>
+</div>
+
     <div class="container">
+        
         <h2>Activity Tracker</h2>
 
         <input id="activityInput" type="text" placeholder="ENTER ACTIVITY">
