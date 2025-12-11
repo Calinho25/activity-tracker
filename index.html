@@ -7,15 +7,48 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h2>Activity Tracker</h2>
+    <div class="container">
+        <h2>Activity Tracker</h2>
         <input id="activityInput" type="text" placeholder="ENTER ACTIVITY">
         <p id="activityList"></p>
+        <div class="toggle-wrapper">
+            <label class="switch">
+                <input type="checkbox" id="modeToggle">
+                <span class="slider"></span>
+            </label>
+            <span id="modeLabel">Stopwatch Mode</span>
+        </div>
+        <div id="stopwatchBlock">
          <div id="stopwatch" >00:00:00</div>
-         <!--calls a function when the button is clicked-->
-         <button onclick="startStopwatch()">Start</button>
-         <button onclick="stopStopwatch()">Stop</button>
-         <button onclick="resetStopwatch()">Reset</button>
+         <div class="buttons">
+            <!--calls a function when the button is clicked-->
+            <button onclick="startStopwatch()">Start</button>
+            <button onclick="stopStopwatch()">Stop</button>
+            <button onclick="resetStopwatch()">Reset</button>
+         </div>
+        </div>
+    <div id="pomodoroContainer" style="display:none;">
+    <div id="pomodoroLabel">Work Session</div>
+    <div id="pomodoroDisplay">25:00</div>
+
+    <div class="button-row">
+        <button onclick="startPomodoro()">Start</button>
+        <button onclick="stopPomodoro()">Stop</button>
+        <button onclick="resetPomodoro()">Reset</button>
+    </div>
+    </div>
+
     <script>
+        let pomodoroMode = "work"; // work | shortBreak | longBreak
+        let pomodoroTimeLeft = 10; // 25 minutes
+        let pomodoroInterval = null;
+        let pomodoroSessionCount = 0;
+        // NEW: Track elapsed work time in seconds
+        let pomodoroWorkElapsed = 0;
+        // NEW: Track when the work session started
+        let pomodoroStartTime = null;
+
+        let currentMode = "stopwatch";
         let activityTimes = {};
          let activityInput = document.querySelector("#activityInput");
          let activityList = document.querySelector("#activityList");
@@ -99,6 +132,12 @@
         return (number < 10 ? "0" : "") + number;
     }
 
+    function deleteActivity(name) {
+    delete activityTimes[name];  // remove from object
+    localStorage.setItem("activityTimes", JSON.stringify(activityTimes)); // save updated state
+    updateActivityList(); // redraw UI
+    }
+
     // format seconds like "1h 5m 3s"
     function formatSeconds(totalSeconds) {
         let hours = Math.floor(totalSeconds / 3600);
@@ -119,9 +158,165 @@
         for (let activity in activityTimes) {
             let totalTime = activityTimes[activity];
             let formatted = formatSeconds(totalTime);
-            activityList.innerHTML += `${activity} — ${formatted}<br>`;
+            activityList.innerHTML += `${activity} — ${formatted}
+            <span class="delete-button" data-activity="${activity}">❌</span>
+            <br>`;
         }
     }
+    function switchToPomodoro() {
+    currentMode = "pomodoro";
+    resetStopwatch();
+
+    document.getElementById("modeLabel").textContent = "Pomodoro Mode";
+
+    document.getElementById("stopwatchBlock").style.display = "none";
+    document.getElementById("pomodoroContainer").style.display = "block";
+    }
+
+    function switchToStopwatch() {
+    currentMode = "stopwatch";
+    resetPomodoro();
+
+    document.getElementById("modeLabel").textContent = "Stopwatch Mode";
+
+    document.getElementById("stopwatchBlock").style.display = "block";
+    document.getElementById("pomodoroContainer").style.display = "none";
+    }
+
+    function formatPomodoro(seconds) {
+    let minutes = Math.floor(seconds / 60);
+    let secs = seconds % 60;
+
+    return `${pad(minutes)}:${pad(secs)}`;
+}
+function updatePomodoro() {
+    pomodoroTimeLeft--;
+
+    // Only count work time
+    if (pomodoroMode === "work" && pomodoroStartTime) {
+        // Live count is handled when stopping, so nothing here
+    }
+
+    document.getElementById("pomodoroDisplay").textContent =
+        formatPomodoro(pomodoroTimeLeft);
+
+    if (pomodoroTimeLeft <= 0) {
+        handlePomodoroTransition();
+    }
+}
+
+function handlePomodoroTransition() {
+    // If a work session just ended, log it
+    if (pomodoroMode === "work" && pomodoroStartTime) {
+        let elapsed = Math.floor((Date.now() - pomodoroStartTime) / 1000);
+        pomodoroWorkElapsed += elapsed;
+        pomodoroStartTime = null;
+        savePomodoroWork();
+    }
+
+    // Now switch modes normally
+    if (pomodoroMode === "work") {
+        pomodoroSessionCount++;
+
+        if (pomodoroSessionCount % 4 === 0) {
+            pomodoroMode = "longBreak";
+            pomodoroTimeLeft = 900;
+            document.getElementById("pomodoroLabel").textContent = "Long Break";
+        } else {
+            pomodoroMode = "shortBreak";
+            pomodoroTimeLeft = 300;
+            document.getElementById("pomodoroLabel").textContent = "Short Break";
+        }
+
+    } else {
+        // Back to work session
+        pomodoroMode = "work";
+        pomodoroTimeLeft = 1500;
+        document.getElementById("pomodoroLabel").textContent = "Work Session";
+    }
+
+    document.getElementById("pomodoroDisplay").textContent =
+        formatPomodoro(pomodoroTimeLeft);
+}
+
+
+    // reset display
+    document.getElementById("pomodoroDisplay").textContent =
+        formatPomodoro(pomodoroTimeLeft);
+
+function startPomodoro() {
+    clearInterval(stopwatchInterval); 
+
+    if (pomodoroMode === "work") {
+        // mark the time the work session starts/resumes
+        pomodoroStartTime = Date.now();
+    }
+
+    pomodoroInterval = setInterval(updatePomodoro, 1000);
+}
+
+function stopPomodoro() {
+    clearInterval(pomodoroInterval);
+    pomodoroInterval = null;
+
+    // Only save work time if:
+    // 1. We were in a work session
+    // 2. Work actually happened
+    if (pomodoroMode === "work" && pomodoroStartTime) {
+        let elapsed = Math.floor((Date.now() - pomodoroStartTime) / 1000);
+
+        if (elapsed > 0) { 
+            pomodoroWorkElapsed += elapsed;
+            savePomodoroWork();
+        }
+    }
+
+    pomodoroStartTime = null; 
+    pomodoroWorkElapsed = 0; // prevent future accidental logging
+}
+
+function savePomodoroWork() {
+    let activityName = activityInput.value.trim().toLowerCase();
+    if (activityName === "") return;
+
+    if (!activityTimes[activityName]) {
+        activityTimes[activityName] = 0;
+    }
+
+    activityTimes[activityName] += pomodoroWorkElapsed;
+    pomodoroWorkElapsed = 0;
+
+    updateActivityList();
+    localStorage.setItem("activityTimes", JSON.stringify(activityTimes));
+}
+
+
+function resetPomodoro() {
+    stopPomodoro();
+
+    pomodoroMode = "work";
+    pomodoroTimeLeft = 1500;
+    pomodoroSessionCount = 0;
+
+    document.getElementById("pomodoroLabel").textContent = "Work Session";
+    document.getElementById("pomodoroDisplay").textContent = formatPomodoro(1500);
+}
+
+    activityList.addEventListener("click", function(event) {
+    if (event.target.classList.contains("delete-button")) {
+        let name = event.target.getAttribute("data-activity");
+        deleteActivity(name);
+    }
+    });
+    document.getElementById("modeToggle").addEventListener("change", function() {
+        if (this.checked) {
+            switchToPomodoro();
+        } else {
+            switchToStopwatch();
+        }
+    });
+
+
 </script>
 
 </body>
