@@ -12,7 +12,26 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("fetch", event => {
+  const url = new URL(event.request.url);
+
+  // Network-first for the main page (so updates show without hard refresh)
+  if (url.pathname.endsWith("/index.html") || url.pathname === "/") {
+    event.respondWith(
+      fetch(event.request)
+        .then(networkResponse => {
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for everything else (fast + offline)
   event.respondWith(
     caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
+

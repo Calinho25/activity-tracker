@@ -24,6 +24,19 @@
 
         <input id="activityInput" type="text" placeholder="ENTER ACTIVITY">
         <p id="activityList"></p>
+        <details class="manual-add">
+            <summary class="manual-summary">Manual add</summary>      
+
+          <div class="manual-row">
+            <input id="manualActivityInput" type="text" placeholder="Activity name (optional)">
+            <input id="manualHours" type="number" min="0" placeholder="h">
+            <input id="manualMinutes" type="number" min="0" max="59" placeholder="m">
+            <input id="manualSeconds" type="number" min="0" max="59" placeholder="s">
+            <button id="manualAddBtn" type="button">Add time</button>
+          </div>        
+
+          <p class="hint">Tip: leave activity blank to use the main activity input above.</p>
+        </details>
 
         <div class="toggle-wrapper">
             <label class="switch">
@@ -80,6 +93,14 @@
         let activityList = document.querySelector("#activityList");
         let startTime;           // stopwatch start
         let stopwatchInterval;   // setInterval id
+        
+        // manual additions 
+        let manualActivityInput = document.querySelector("#manualActivityInput");
+        let manualHours = document.querySelector("#manualHours");
+        let manualMinutes = document.querySelector("#manualMinutes");
+        let manualSeconds = document.querySelector("#manualSeconds");
+        let manualAddBtn = document.querySelector("#manualAddBtn");
+
 
         // ==============================
         // LOAD SAVED ACTIVITIES
@@ -307,6 +328,43 @@
             }
         }
 
+        function addManualTime() {
+             // 1) Choose activity name:
+             // prefer manual input; if empty, fall back to your main activity input
+             let activityName = (manualActivityInput.value || "").trim().toLowerCase();
+             if (!activityName) {
+               activityName = (activityInput.value || "").trim().toLowerCase();
+             }
+             if (!activityName) return; // no activity = do nothing
+         
+             // 2) Read duration fields (default to 0)
+             const h = parseInt(manualHours.value || "0", 10) || 0;
+             const m = parseInt(manualMinutes.value || "0", 10) || 0;
+             const s = parseInt(manualSeconds.value || "0", 10) || 0;
+         
+             // 3) Basic validation (keeps your data clean)
+             if (h < 0 || m < 0 || s < 0) return;
+             if (m > 59 || s > 59) return;
+         
+             // 4) Convert to total seconds
+             const totalSeconds = (h * 3600) + (m * 60) + s;
+             if (totalSeconds <= 0) return;
+         
+             // 5) Add to your existing totals object
+             // (this assumes you already have `activityTimes` as your totals store)
+             activityTimes[activityName] = (activityTimes[activityName] || 0) + totalSeconds;
+         
+             // 6) Persist + refresh UI
+             localStorage.setItem("activityTimes", JSON.stringify(activityTimes));
+             updateActivityList();
+         
+             // 7) Clear duration inputs for convenience
+             manualHours.value = "";
+             manualMinutes.value = "";
+             manualSeconds.value = "";
+        }           
+
+
         function deleteActivity(name) {
             delete activityTimes[name];
             localStorage.setItem("activityTimes", JSON.stringify(activityTimes));
@@ -322,6 +380,15 @@
                 deleteActivity(name);
             }
         });
+        if (manualAddBtn) manualAddBtn.addEventListener("click", addManualTime);
+
+
+        [manualActivityInput, manualHours, manualMinutes, manualSeconds].forEach(el => {
+            el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") addManualTime();
+            });
+        });
+
 
         document.getElementById("modeToggle").addEventListener("change", function() {
             if (this.checked) {
